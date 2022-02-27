@@ -1,12 +1,15 @@
 const httpServer = require("http").createServer();
 const io = require("socket.io")(httpServer, {
     cors: {
-        origin: "http://localhost:8080",
+        origin: [
+            "http://192.168.1.9:8080/",
+            "http://localhost:8080",
+        ],
     },
 });
 
-const crypto = require("crypto");
-const randomId = () => crypto.randomBytes(8).toString("hex");
+// const crypto = require("crypto");
+// const randomId = () => crypto.randomBytes(8).toString("hex");
 
 const {InMemorySessionStore} = require("./sessionStore");
 const sessionStore = new InMemorySessionStore();
@@ -29,9 +32,13 @@ io.use((socket, next) => {
     if (!username) {
         return next(new Error("invalid username"));
     }
-    socket.sessionID = randomId();
-    socket.userID = randomId();
+    // socket.sessionID = randomId();
+    // socket.userID = randomId();
+    // socket.username = username;
+    socket.sessionID = username;
+    socket.userID = username;
     socket.username = username;
+    console.log(socket.sessionID + "Session ID");
     next();
 });
 
@@ -75,7 +82,7 @@ io.on("connection", (socket) => {
     socket.emit("users", users);
 
     // notify existing users
-    socket.broadcast.emit("user connected", {
+    socket.broadcast.emit("user_connected", {
         userID: socket.userID,
         username: socket.username,
         connected: true,
@@ -83,13 +90,13 @@ io.on("connection", (socket) => {
     });
 
     // forward the private message to the right recipient (and to other tabs of the sender)
-    socket.on("private message", ({content, to}) => {
+    socket.on("private_message", ({content, to}) => {
         const message = {
             content,
             from: socket.userID,
             to,
         };
-        socket.to(to).to(socket.userID).emit("private message", message);
+        socket.to(to).to(socket.userID).emit("private_message", message);
         messageStore.saveMessage(message);
     });
 
